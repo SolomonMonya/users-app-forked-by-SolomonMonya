@@ -1,65 +1,104 @@
 import { FC } from "react";
-import exmapleImg from "./assets/example.png";
+import { requestUsers, requestUsersWithError, User } from "./api";
+import React, { useState, useEffect } from "react";
 
-const Requirements: FC = () => (
-  <div>
-    <h1>Техническое задание</h1>
-    <p>
-      Дана функция <code>requestUsers</code> с аргументом типа
-      <code> Query</code>, которая возвращает <code>{"Promise<User[]>"}</code>,
-      и функция <code>requestUsersWithError</code>, которая возвращает
-      <code> {"Promise.reject<string>"}</code> c ошибкой в виде строки. Обе
-      функции имитируют работу с апи.
-    </p>
+const Requirements: FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState<string>("");
+  const [age, setAge] = useState<string>("");
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(4);
 
-    <h2>Необходимо:</h2>
-    <ol>
-      <li>
-        Реализовать показ списка пользователей (имя и возраст через запятую)
-      </li>
-      <li>
-        Показывать текст <code>Loading...</code> при загрузке пользователей
-        вместо списка пользователей.
-      </li>
-      <li>
-        Обработать возможную ошибку при вызове requestUsers (можно проверить при
-        помощи функции <code>requestUsersWithError</code>), показать текст
-        ошибки вместо списка пользователей.
-      </li>
-      <li>
-        Реализовать фильтрацию по имени (передавая в аргументе поле{" "}
-        <code>name</code> в функцие <code>requestUsers</code>, например:{" "}
-        <code>{'requestUsers({name: "Jack", ...})'}</code>). Значение по
-        умолчанию - пустая строка.
-      </li>
-      <li>
-        Реализовать фильтрацию по возрасту (передавая в аргументе поле{" "}
-        <code>age</code> в функцие <code>requestUsers</code> -{" "}
-        <code>{'requestUsers({age: "26", ...})'}</code>). Значение по умолчанию
-        - пустая строка.
-      </li>
-      <li>
-        Реализовать возможность смены страницы и количества элементов на
-        странице - <code>{"requestUsers({limit: 4, offset: 4, ...})"}</code>.
-        Здесь <code>offset</code> это не номер страницы, а сдвиг (
-        <code>offset = (page - 1) * limit</code>), Значения по умолчанию: offset
-        - 0, limit - 4.
-      </li>
-      <li>
-        При получении пустого списка от функции <code>requestUsers</code>{" "}
-        показывать сообщение
-        <code> Users not found</code>
-      </li>
-    </ol>
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const offset = (page - 1) * limit;
+        const users = await requestUsers({ name, age, limit, offset });
+        // Также, если мы хотим вызвать Error user request, то нужно заменить верхнюю строчку на эту:
+        // const users = await requestUsersWithError({ name, age, limit, offset });
+        if (users.length === 0) {
+          setError("Users not found");
+        }
+        setUsers(users);
+      } catch (e: any) {
+        setError(e.message);
+        alert(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    <h2>Пример интерфейса проекта</h2>
-    <img src={exmapleImg} width={480} alt="Пример интерфейса проекта" />
+    fetchUsers();
+  }, [name, age, page, limit]);
 
-    <p>
-      Использование стилей, ui-kit и прочего не требуется. Достаточно
-      использования нативных элементов.
-    </p>
-  </div>
-);
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setName(e.target.value);
+  };
+
+  const handleAgeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAge(e.target.value);
+  };
+
+  const handleLimitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLimit(Number(e.target.value));
+  };
+
+  const handlePrevPage = () => {
+    setPage((prev) => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setPage((prev) => prev + 1);
+  };
+
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Name"
+        value={name}
+        onChange={handleNameChange}
+      />
+      <input
+        type="text"
+        placeholder="Age"
+        value={age}
+        onChange={handleAgeChange}
+      />
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div>{error}</div>
+      ) : (
+        <ul>
+          {users.map((user) => (
+            <li key={user.id}>
+              {user.name}, {user.age}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div>
+        <label>By page:</label>
+        <select value={limit} onChange={handleLimitChange}>
+          <option value={4}>4</option>
+          <option value={6}>6</option>
+          <option value={11}>11</option>
+        </select>
+        <button onClick={handlePrevPage} disabled={page === 1}>
+          prev
+        </button>
+        <span> page: {page} </span>
+        <button onClick={handleNextPage}>next</button>
+      </div>
+    </div>
+  );
+};
 
 export default Requirements;
